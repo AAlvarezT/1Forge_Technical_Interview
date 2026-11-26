@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forge-technical-interview"
+version = "0.1.0"
+description = "Prueba técnica 1FORGE: scraper, debugging y diseño de producto"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.12,<5",
+    "requests>=2.32,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.8,<1"]
+bonus = ["selenium>=4.20,<5"]
+
+[project.scripts]
+forge-books = "forge_interview.books.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["reference"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
