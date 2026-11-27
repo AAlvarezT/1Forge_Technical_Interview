@@ -4,6 +4,8 @@ import argparse
 import logging
 from pathlib import Path
 
+from requests import RequestException
+
 from .scraper import ScraperConfig, run_scraper
 from .storage import BookStore
 
@@ -14,7 +16,7 @@ def main(argv: list[str] | None = None) -> int:
     for name, help_text in (
         ("init-db", "Crear o abrir el esquema de SQLite"),
         ("status", "Mostrar cuántos libros hay guardados"),
-        ("scrape", "Ejecutar el scraper (implementación pendiente)"),
+        ("scrape", "Ejecutar o reanudar el scraper"),
     ):
         command = commands.add_parser(name, help=help_text)
         command.add_argument("--db", type=Path, default=Path("data/books.sqlite3"))
@@ -42,8 +44,16 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as error:
         parser.error(str(error))
     try:
-        run_scraper(config)
-    except NotImplementedError as error:
-        logging.error("%s", error)
-        return 2
+        total = run_scraper(config)
+    except KeyboardInterrupt:
+        logging.warning("Interrumpido. Repite el comando para reanudar desde SQLite.")
+        return 130
+    except (RequestException, ValueError) as error:
+        logging.error("Catálogo interrumpido: %s", error)
+        return 1
+    if total < config.limit:
+        logging.error(
+            "Faltan %d libros. Repite el comando para recuperar pendientes.", config.limit - total
+        )
+        return 1
     return 0
