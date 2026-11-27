@@ -1,9 +1,4 @@
-"""Tres contratos pendientes del enunciado.
-
-Las marcas xfail documentan los fallos del original. Retirar cada marca cuando
-se implemente la corrección y el test comience a pasar; nunca presentar los
-xfail como requisitos aprobados.
-"""
+"""Tres contratos de la Parte 2 — todos deben pasar con el agente corregido."""
 
 import pytest
 
@@ -17,9 +12,6 @@ def deterministic_execution(monkeypatch):
     monkeypatch.setattr(agent.random, "choice", lambda values: values[0])
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Pendiente: respetar el límite y gestionar falta de capacidad"
-)
 def test_sender_cannot_exceed_25_successful_messages():
     number = agent.Numero("+51900000999")
     api = MockAPI()
@@ -30,7 +22,6 @@ def test_sender_cannot_exceed_25_successful_messages():
     assert number.enviados_hoy == 25
 
 
-@pytest.mark.xfail(strict=True, reason="Pendiente: registrar el bloqueo y excluir al emisor")
 def test_blocked_sender_is_removed_from_rotation():
     blocked = agent.Numero("+51900000001")
     available = agent.Numero("+51900000002")
@@ -42,7 +33,6 @@ def test_blocked_sender_is_removed_from_rotation():
     assert agent.elegir_numero([blocked, available]) is available
 
 
-@pytest.mark.xfail(strict=True, reason="Pendiente: normalizar y deduplicar destinatarios")
 def test_repeated_contact_receives_one_message():
     api = MockAPI()
     contacts = [{"telefono": "900000001"}, {"telefono": "+51 900-000-001"}]

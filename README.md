@@ -5,9 +5,9 @@ Arturo Alvarez de la Torre
 | Parte | Entrega |
 | --- | --- |
 | 1. Scraper | Catálogo de libros en SQLite, con reanudación, backoff y logs. |
-| 2. Debugging | [Agente corregido](src/forge_interview/messaging/agent.py), [registro de bugs](docs/part2-bugs.md) y pruebas con MockAPI. |
-| 3. Diseño | [Agente de enriquecimiento](docs/part3-enrichment.md), con flujo, validación, evaluación y costos. |
-| 4. Producto | [Plan semanal para Nemo](docs/part4-product.md), mensaje al cliente y propuesta comercial. |
+| 2. Debugging | [Agente corregido](src/forge_interview/messaging/agent.py), [registro de bugs](docs/part2/bugs.md) y pruebas con MockAPI. |
+| 3. Diseño | [Agente de enriquecimiento](docs/part3/enrichment.md), con flujo, validación, evaluación y costos. |
+| 4. Producto | [Plan semanal para Nemo](docs/part4/product.md), mensaje al cliente y propuesta comercial. |
 
 ## Instalación
 
