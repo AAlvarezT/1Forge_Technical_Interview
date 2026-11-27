@@ -1,107 +1,69 @@
-# 1FORGE - Prueba técnica
+# 1Forge · Prueba técnica de Product Owner de Agentes IA
 
-Repositorio de Arturo Alvarez de la Torre para la prueba de Product Owner de Agentes IA.
+Arturo Alvarez de la Torre
 
-## Estado actual: scaffolding
-
-Esta versión prepara el proyecto. **No es todavía la solución final ni una entrega completa.**
-
-| Parte | Preparado | Pendiente |
-| --- | --- | --- |
-| 1. Scraper | Modelo de libro, SQLite con UPC como clave, comandos y pruebas de persistencia. | Parsing, paginación, red, reintentos, pausas y ejecución real de los 1,000 libros. |
-| 2. Debugging | Código original, copia de trabajo, MockAPI y tres pruebas de aceptación. | Corregir bugs, retirar los `xfail` al resolverlos y documentar cambios. |
-| 3. Diseño | Plantilla con arquitectura, harness, validación, diagnóstico, costos y métricas. | Completar y justificar el diseño en 1-2 páginas más diagrama. |
-| 4. Producto | Los seis pendientes y plantilla de priorización, mensaje e idea de producto. | Decidir prioridades, esfuerzos y alcance semanal. |
-
-Los tests `xfail` son **requisitos pendientes que fallan en el código original**. No cuentan como funcionalidad terminada. Con `strict=True`, un test que comience a pasar exige retirar su marca.
+| Parte | Entrega |
+| --- | --- |
+| 1. Scraper | Catálogo de libros en SQLite, con reanudación, backoff y logs. |
+| 2. Debugging | [Agente corregido](src/forge_interview/messaging/agent.py), [registro de bugs](docs/part2-bugs.md) y pruebas con MockAPI. |
+| 3. Diseño | [Agente de enriquecimiento](docs/part3-enrichment.md), con flujo, validación, evaluación y costos. |
+| 4. Producto | [Plan semanal para Nemo](docs/part4-product.md), mensaje al cliente y propuesta comercial. |
 
 ## Instalación
 
-Se requiere Python 3.11 o superior. SQLite forma parte de la biblioteca estándar.
+Python 3.11 o superior. El scraper necesita Internet para acceder a [Books to Scrape](https://books.toscrape.com/). Las pruebas se ejecutan offline.
 
 ```bash
 python -m venv .venv
-# macOS / Linux
+# macOS o Linux
 source .venv/bin/activate
-# Windows PowerShell (alternativa al comando anterior)
-# .venv\Scripts\Activate.ps1
+# Windows PowerShell: .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
-```
-
-## Comandos disponibles
-
-```bash
-forge-books --help
-forge-books init-db --db data/books.sqlite3
-forge-books status --db data/books.sqlite3
 python -m pytest -q
-python -m ruff check .
-python -m ruff format --check .
 ```
 
-La base se crea al ejecutar `init-db`; los datos y las credenciales quedan fuera de Git.
+En Windows, también puedes ejecutar `.\.venv\Scripts\python.exe` en lugar de `python` sin activar el entorno.
 
-El contrato del scraper está preparado:
+## Demo y ejecución completa
+
+Para la demo, parte de una base nueva. Cambia el nombre del archivo si ya usaste esta ruta.
 
 ```bash
-forge-books scrape --db data/books.sqlite3 --delay 1.5 --max-retries 3 --timeout 30
+python -m forge_interview.books scrape --db data/demo.sqlite3 --limit 3 --delay 0.5
+python -m forge_interview.books scrape --db data/demo.sqlite3 --limit 5 --delay 0.5
+python -m forge_interview.books scrape --db data/demo.sqlite3 --limit 5 --delay 0.5
+python -m forge_interview.books status --db data/demo.sqlite3
 ```
 
-**Este último comando todavía termina con código 2 y un mensaje de pendiente.** No realiza peticiones ni afirma haber descargado libros. `--limit 10` servirá para una ejecución pequeña cuando se implemente el recorrido.
+`--limit` fija el **total objetivo en SQLite**. La segunda ejecución vuelve al listado, omite tres detalles y guarda dos nuevos. La tercera termina con cinco filas y sin solicitudes. Para una extracción completa:
 
-También se puede ejecutar la CLI con `python -m forge_interview.books`.
+```bash
+python -m forge_interview.books scrape --db data/books.sqlite3 --delay 1.5
+```
 
-## Verificación de esta base
+Si interrumpes con Ctrl+C, repite el mismo comando con la misma base. El scraper reanuda a partir de los detalles ya confirmados. El comando instalado `forge-books` es equivalente a `python -m forge_interview.books`.
 
-Comprobado con Python 3.12:
+## Decisiones del scraper
 
-- Instalación editable del paquete y resolución de sus dependencias.
-- `pytest`: **5 aprobados y 3 fallos esperados (`xfail`)** del agente original.
-- Ruff: análisis y formato aprobados.
-- CLI: ayuda, creación de esquema, estado y rechazo de parámetros inválidos.
-- `scrape`: salida de pendiente con código 2, sin peticiones de red.
+- **Identidad y reanudación.** UPC es la clave primaria en SQLite. Cada escritura se confirma individualmente. Al retomar se recorre el listado desde la primera página y se consulta el índice por URL antes de pedir cada detalle. Los detalles guardados son una captura y conservan su fecha, su precio y su stock durante la reanudación.
+- **Extracción.** Título, categoría, precio, rating, UPC y stock salen del detalle. SQLite guarda GBP en peniques enteros y el instante de extracción en UTC. Si el HTML no cumple el contrato, queda un error con la URL y el registro se recupera en una ejecución posterior.
+- **Red.** El proceso es secuencial. `--delay` es la pausa mínima después de cada petición y también aplica a reintentos. Errores de red y HTTP 5xx se reintentan hasta `--max-retries` veces, con backoff de 1, 2 y 4 s bajo las opciones por defecto y una pausa efectiva igual al máximo entre el backoff y el delay. Cada intento tiene `--timeout`. Un HTTP 401, 403 o 429 detiene el flujo.
+- **Estado.** Los logs muestran detalles guardados, omitidos, errores y duración. La CLI devuelve 1 si faltan libros o se corta el catálogo por error, y 130 si lo interrumpe el usuario.
 
-Estos resultados validan el scaffolding y la persistencia. Todavía no validan la
-extracción de 1,000 libros ni un agente corregido.
+### Bonus SQL · Categorías con más stock
 
-## Organización
+```sql
+SELECT category, SUM(stock) AS total_stock
+FROM books
+GROUP BY category
+ORDER BY total_stock DESC, category ASC
+LIMIT 5;
+```
 
-| Ruta | Propósito |
-| --- | --- |
-| `src/forge_interview/books/` | Modelo, persistencia, configuración y puntos de entrada del scraper. |
-| `src/forge_interview/messaging/agent.py` | Copia de trabajo del agente, todavía con los bugs del enunciado. |
-| `src/forge_interview/messaging/mock_api.py` | Mock local del enunciado; no envía mensajes reales. |
-| `reference/shipping_agent_original.py` | Código original para comparar cambios. |
-| `tests/` | Pruebas offline de persistencia y contratos del agente. |
-| `docs/requirements.md` | Lista de requisitos y evidencias por completar. |
-| `docs/part2-bugs.md` | Registro de bugs, consecuencias y correcciones. |
-| `docs/part3-enrichment.md` | Diseño del agente de enriquecimiento. |
-| `docs/part4-product.md` | Priorización, comunicación e idea de producto. |
-| `docs/review.md` | Guion y verificaciones para la revisión en vivo. |
+## Verificación
 
-## Decisiones iniciales
+- Python 3.12, `pytest` y Ruff. Las pruebas cubren selectores críticos, paginación, interrupción, reanudación, idempotencia, reintentos y el agente con MockAPI.
+- En el sitio real se validó el recorrido 3 → 5 → 5 sobre la misma base. El agente de envíos usa el mock y el diseño de enriquecimiento está en Markdown.
+- La ventana horaria y Selenium son extras opcionales fuera del alcance entregado.
 
-- **Pocos componentes:** requests y Beautiful Soup para el sitio estático. Selenium queda como dependencia opcional para el bonus con JavaScript.
-- **Dinero sin flotantes:** el modelo usa `Decimal`; SQLite guarda el precio en peniques enteros (`price_pence`). La moneda es GBP para este ejercicio.
-- **Persistencia por registro:** cada `upsert` confirmado se guarda en una transacción. Esto prepara la reanudación después de una interrupción.
-- **UPC como identidad:** el UPC es la clave primaria. `contains_url()` permitirá evitar volver a pedir páginas de detalle ya guardadas.
-- **Fecha explícita:** las extracciones se registran con zona horaria y se normalizan a UTC al guardar.
-- **Red y envíos separados de los tests:** las verificaciones iniciales no hacen scraping real ni contactan a WhatsApp.
-- **Alcance honesto:** la persistencia implementa una base para la idempotencia; la reanudación integral solo quedará demostrada cuando exista el recorrido y se pruebe una interrupción.
-
-## Siguiente trabajo
-
-1. Implementar `parse_book_detail()` con una página de detalle de prueba.
-2. Implementar `run_scraper()`: descubrir URLs, revisar `contains_url()`, descargar, validar y guardar.
-3. Añadir reintentos limitados, pausa configurable y logs de progreso y duración.
-4. Depurar el agente con cambios mínimos y convertir los tres `xfail` en tests aprobados.
-5. Completar partes 3 y 4 y ensayar cambios pequeños en vivo.
-
-## Entrega
-
-- Un repositorio público o privado con acceso para el evaluador.
-- Partes 1 y 2 ejecutables, tests y README con decisiones y limitaciones.
-- Partes 3 y 4 en Markdown dentro de `docs/` (formato permitido por el enunciado).
-- Documentar qué quedó incompleto y el uso de IA. Cada línea entregada debe poder explicarse y modificarse en vivo.
-
-Antes de enviar, seguir [la lista de revisión](docs/review.md).
+Para la revisión en vivo, consulta [el guion de demo](docs/review.md).
